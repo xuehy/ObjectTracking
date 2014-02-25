@@ -1,0 +1,46 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/xuehy/projects/SurfaceTracking/GetFrame.cpp
+GetFrame.h
+/home/xuehy/projects/SurfaceTracking/GetFrame.h
+fstream
+-
+string
+-
+
+/home/xuehy/projects/SurfaceTracking/GetFrame.h
+opencv2/opencv.hpp
+-
+filepath.h
+/home/xuehy/projects/SurfaceTracking/filepath.h
+
+/home/xuehy/projects/SurfaceTracking/constant.h
+string
+-
+
+/home/xuehy/projects/SurfaceTracking/filepath.h
+
+/home/xuehy/projects/SurfaceTracking/init.cpp
+init.h
+/home/xuehy/projects/SurfaceTracking/init.h
+
+/home/xuehy/projects/SurfaceTracking/init.h
+opencv2/opencv.hpp
+-
+constant.h
+/home/xuehy/projects/SurfaceTracking/constant.h
+
+/home/xuehy/projects/SurfaceTracking/main.cpp
+init.h
+/home/xuehy/projects/SurfaceTracking/init.h
+fstream
+-
+GetFrame.h
+/home/xuehy/projects/SurfaceTracking/GetFrame.h
+

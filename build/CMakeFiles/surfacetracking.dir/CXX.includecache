@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/xuehy/projects/SurfaceTracking/constant.h
+
+/home/xuehy/projects/SurfaceTracking/init.cpp
+init.h
+/home/xuehy/projects/SurfaceTracking/init.h
+
+/home/xuehy/projects/SurfaceTracking/init.h
+opencv2/opencv.hpp
+-
+constant.h
+/home/xuehy/projects/SurfaceTracking/constant.h
+fstream
+-
+vector
+-
+

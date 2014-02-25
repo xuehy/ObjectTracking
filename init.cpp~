@@ -1,0 +1,204 @@
+#include "init.h"
+using namespace cv;
+using namespace std;
+
+/* project a poing in R^2 to R^3 */
+void projection_2_3(vector <vector <double> > &camera, Mat &depthImg, vector <Point> &p2d, vector <Point3f> &p3d)
+{
+    double f = camera[0][0];
+    int size = p2d.size();
+
+    for (int i = 0; i < size; i++)
+    {
+        if(fabs(p3d[i].z) < 1.0 && i > 0) p3d[i].z = p3d[i-1].z;
+        p3d[i].z = depthImg.at<__U16_TYPE>(p2d[i]);
+        p3d[i].x = (p2d[i].x-320) * p3d[i].z / f;
+        p3d[i].y = (p2d[i].y-240) * p3d[i].z / f;
+    }
+}
+
+/* project a point in R^3 to R^2 */
+void projection_3_2(vector <vector <double> > &camera, vector <Point3f> &p3d, vector <Point> &p2d)
+{
+    double f = camera[0][0];
+    int size = p3d.size();
+
+    for (int i = 0; i < size; i++)
+    {
+        p2d[i].x = 320 + f * p3d[i].x / p3d[i].z;
+        p2d[i].y = 240 + f * p3d[i].y / p3d[i].z;
+    }
+}
+
+class params
+{
+public:
+    Point a,b;
+    string win_name;
+    Mat src;
+    Mat cur;
+    bool begin = false;
+    int thickness;
+    int R;
+};
+
+void mouseEvent1(int event,int x,int y,int flags,void* param)
+{
+    params* p = (params*)param;
+    p -> thickness = CV_FILLED;
+    p -> R = 0;
+    bool check_line_state = false;
+
+
+    if( event == CV_EVENT_LBUTTONDOWN )
+    {
+        p->a.x = x;
+        p->a.y = y;
+        check_line_state = true;
+        p->begin = true;
+    }
+
+    else if( event == CV_EVENT_RBUTTONDOWN )
+    {
+        p->a.x = x;
+        p->a.y = y;
+        check_line_state = true;
+        p->begin = true;
+    }
+
+    else if (check_line_state && event == CV_EVENT_MOUSEMOVE)
+    {
+        p->b.x = x;
+        p->b.y = y;
+    }
+
+
+    else if(event == CV_EVENT_LBUTTONUP)
+    {
+        p->b.x = x;
+        p->b.y = y;
+
+        rectangle(p->src, p->a, Point(x,y), CV_RGB(p->R,0,0), p->thickness, 8 );
+        imshow(p->win_name,p->src);
+        check_line_state = false;
+    }
+
+    else if(event == CV_EVENT_RBUTTONUP)
+    {
+        p->b.x = x;
+        p->b.y = y;
+
+        rectangle(p->src, p->a, Point(x,y), CV_RGB(200,200,200), p->thickness, 8 );
+        imshow(p->win_name,p->src);
+        check_line_state = false;
+    }
+
+}
+
+void sampleVertices(vector <vector <double> > &projectMatrix, Mat &colorImg, Mat &depthImg, vector <Point> &mesh_vertex, Mat &cDepthBinary)
+{
+    Mat c8BitDepth;
+    Mat tmp_colorImg;
+    colorImg.copyTo(tmp_colorImg);
+    depthImg.convertTo( c8BitDepth, CV_8U, 255.0 / 7000 );
+
+    /* Black region which means too close to kinect are set at infinitive distance */
+    for(int i = 0; i < c8BitDepth.rows; i++)
+    {
+        for(int j = 0; j < c8BitDepth.cols; j++)
+        {
+            if(c8BitDepth.at<uchar>(i,j) == 0) c8BitDepth.at<uchar>(i,j) = 255;
+        }
+    }
+    
+    cDepthBinary = Mat(cv::Size(640,480),CV_8UC1);
+    
+    /* get the rough object area */
+    cv::threshold(c8BitDepth,cDepthBinary,56,255,1);
+    
+    /* manually refine the object region */
+    params p;
+    cDepthBinary.copyTo(p.src);
+  
+    p.win_name = "Elimination";
+    namedWindow(p.win_name);
+    imshow(p.win_name, cDepthBinary);
+    
+    cout<<"Refine the object area(white) & press 'q' to end"<<endl;
+    
+    while(true)
+    {
+        setMouseCallback(p.win_name, &mouseEvent1, &p);
+        if(waitKey( 1 ) == 'q') break;
+    }
+
+    destroyWindow(p.win_name);
+    p.src.copyTo(cDepthBinary);
+
+    imshow("depthbin",cDepthBinary);
+
+    /* randomly sample vertices in object area */
+    Mat Edge;
+    Mat vertex_show;
+    cDepthBinary.copyTo(vertex_show);
+    Canny(cDepthBinary,Edge,10,10);
+
+    mesh_vertex.clear();
+    vector <int> boundary;
+    srand( time(0) );
+    int boundary_sample_counts = 0;
+    int inner_sample_counts = 0;
+    while(boundary_sample_counts < boundary_number)
+    {
+        int x = rand()%640;
+        int y = rand()%480;
+        if(Edge.at<uchar>(Point(x,y)) != 0  && find(mesh_vertex.begin(),mesh_vertex.end(),cv::Point(x,y)) == mesh_vertex.end())
+        {
+	    boundary.push_back(1);
+            mesh_vertex.push_back(Point(x,y));
+            vertex_show.at<uchar>(Point(x,y)) = 180;
+            boundary_sample_counts ++;
+        }
+    }
+    while(inner_sample_counts < inner_number)
+    {
+        int x = rand()%640;
+        int y = rand()%480;
+        if(cDepthBinary.at<uchar>(Point(x,y)) != 0 && Edge.at<uchar>(Point(x,y)) == 0  && find(mesh_vertex.begin(),mesh_vertex.end(),cv::Point(x,y)) == mesh_vertex.end())
+        {
+	    boundary.push_back(0);
+            mesh_vertex.push_back(Point(x,y));
+            vertex_show.at<uchar>(Point(x,y)) = 180;
+            inner_sample_counts ++;
+        }
+    }
+    imshow("vertices",vertex_show);
+    
+    // project mesh_vertex into 3D space */
+    vector <Point3f> V;
+    V.resize(vertex_number);
+    projection_2_3(projectMatrix,depthImg,mesh_vertex,V);
+    // write to file
+    fstream file;
+    file.open("vertex.txt",ios::out);
+    file << "# file of vertices , prepared for tetgen"<<endl;
+    file << "# First line:  <# of points> <dimension (3)> <# of attributes> <boundary markers (0 or 1)>" <<endl;
+    file <<vertex_number<<" "<<3<<" "<<0<<" "<<1<<endl;
+    file << "# <point #> <x> <y> <z> [attributes] [boundary marker]"<<endl;
+    for(int i = 0; i < vertex_number; i++)
+    {
+      file<<(i+1)<<" "<<V[i].x<<" "<<V[i].y<<" "<<V[i].z<<" "<<boundary[i]<<endl;
+    }
+    file.close();
+    cout<<"Vertices written into file 'vertex.txt'"<<endl;
+    cout<<"Press Any Key to Continue"<<endl;
+    
+    waitKey(0);
+    destroyWindow("depthbin");
+    destroyWindow("vertices");
+}
+// generate delaunay 3D mesh using tetgen
+void generateMesh()
+{
+  
+}

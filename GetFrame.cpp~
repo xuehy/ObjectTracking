@@ -1,0 +1,72 @@
+#include "GetFrame.h"
+
+#include <fstream>
+#include <string>
+using namespace std;
+/* function that turns an int to string */
+string itoa(long x)
+{
+    stringstream ss;
+    string s;
+    ss << x;
+    ss >> s;
+    return s;
+}
+void getCameraParameter(vector <vector <double> > &projectMatrix)
+{
+    fstream f;
+    f.open(projection_matrix_path,ios::in);
+    double tmp;
+    projectMatrix.resize(3);
+
+    for(int i = 0; i < 3; i++)
+    {
+        projectMatrix[i].resize(4);
+        for(int j = 0; j < 4; j++)
+        {
+            f >> tmp;
+            projectMatrix[i][j] = tmp;
+        }
+    }
+    f.close();
+}
+
+void getframe(int i, Mat &colorImg, Mat &depthImg)
+{
+    string cf = color_path;
+    string num = itoa(i);
+    cf = cf + num + ".tiff";
+
+    string df = depth_path +  num + ".png";
+
+    colorImg = imread(cf);
+    depthImg = imread(df,CV_LOAD_IMAGE_ANYCOLOR|CV_LOAD_IMAGE_ANYDEPTH);
+}
+
+/* project a poing in R^2 to R^3 */
+void projection_2_3(vector <vector <double> > &camera, Mat &depthImg, vector <Point> &p2d, vector <Point3f> &p3d)
+{
+    double f = camera[0][0];
+    int size = p2d.size();
+
+    for (int i = 0; i < size; i++)
+    {
+        if(fabs(p3d[i].z) < 1.0 && i > 0) p3d[i].z = p3d[i-1].z;
+        p3d[i].z = depthImg.at<__U16_TYPE>(p2d[i]);
+        p3d[i].x = (p2d[i].x-320) * p3d[i].z / f;
+        p3d[i].y = (p2d[i].y-240) * p3d[i].z / f;
+    }
+}
+
+/* project a point in R^3 to R^2 */
+void projection_3_2(vector <vector <double> > &camera, vector <Point3f> &p3d, vector <Point> &p2d)
+{
+    double f = camera[0][0];
+    int size = p3d.size();
+
+    for (int i = 0; i < size; i++)
+    {
+        p2d[i].x = 320 + f * p3d[i].x / p3d[i].z;
+        p2d[i].y = 240 + f * p3d[i].y / p3d[i].z;
+    }
+}
